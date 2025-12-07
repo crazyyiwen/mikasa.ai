@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "server": {
+    "port": 3456,
+    "host": "localhost",
+    "autoStart": true,
+    "cors": {
+      "enabled": true,
+      "origins": ["http://localhost:3000"]
+    }
+  },
+  "llm": {
+    "defaultProvider": "claude",
+    "providers": {
+      "claude": {
+        "model": "claude-sonnet-4-5-20250929",
+        "maxTokens": 4096,
+        "temperature": 0.7
+      },
+      "opensource": {
+        "endpoint": "http://localhost:8000/v1/completions",
+        "model": "codellama-34b",
+        "apiKey": ""
+      }
+    }
+  },
+  "agent": {
+    "maxIterations": 10,
+    "maxRetries": 3,
+    "timeout": 300000,
+    "enabledTools": ["file", "command", "git"],
+    "safety": {
+      "allowShellCommands": true,
+      "allowGitPush": true,
+      "allowFileDelete": false
+    }
+  },
+  "database": {
+    "uri": "mongodb://localhost:27017",
+    "name": "mikasa",
+    "options": {
+      "useNewUrlParser": true,
+      "useUnifiedTopology": true
+    }
+  },
+  "audio": {
+    "format": "wav",
+    "sampleRate": 16000,
+    "channels": 1,
+    "maxDuration": 120,
+    "sttProvider": "whisper"
+  }
+}

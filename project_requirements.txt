@@ -1,0 +1,243 @@
+**Prompt for Claude Code:**
+
+You are an expert full-stack engineer and software architect.
+I want you to design a **complete code development plan** for a project called **“Mikasa”** that is a **voice-controlled and prompt input code generator CLI** with a Node.js(typescript) + Express backend and integration with Claude Code or open-source LLMs.
+
+Please read all requirements carefully and then produce a detailed, step-by-step development plan.
+
+---
+
+### 1. High-level product description
+
+Mikasa is:
+
+- A **CLI tool** (like Claude Code) that runs in a **terminal / command prompt** (Windows cmd / PowerShell and macOS terminal).
+- It also allows the **user to speak** their request.
+- The CLI **records the user’s voice**, converts it to **text in the terminal**, and that text is used as the **prompt for an LLM** (Claude Code or an open-source LLM).
+- Behind the CLI, there is a **Node.js + Express backend service** acting as a smart agent that:
+    - Handles prompts
+    - Calls the selected LLM
+    - The default LLM using claude code.
+    - Generates code
+    - Can plan and execute **multi-step coding tasks**, including:
+        - Long-term reasoning / planning
+        - Modifying code files
+        - Running builds/tests
+        - Debugging failures and iterating
+        - Interacting with Git to create commits and **automatic PRs**
+        - After generating the code, should ask user if apply the code changes.
+        - when user says save, please save the current conversation.
+
+The project will ultimately be **published to NPM** and must be usable via a CLI on **Windows and macOS**.
+
+---
+
+### 2. Voice → Text → Prompt flow
+
+Design how Mikasa will:
+
+1. Start from the terminal:
+    - The user runs something like `mikasa voice` or `mikasa`.
+2. Record voice input from the user’s microphone.
+3. Save audio to a temporary file (e.g., `wav`).
+4. Convert audio to text using a speech-to-text mechanism:
+    - Either:
+        - LLM audio support (e.g., Claude audio input), or
+        - A separate STT engine (Whisper/open-source).
+5. Display the transcribed text back to the user in the terminal.
+6. Use the transcribed text as the **prompt** for the LLM call to generate or modify code.
+
+Please include in the plan:
+
+- How the **CLI layer** will trigger recording and send the audio to the backend.
+- How the backend API route (Express) will receive audio or text and return the transcribed prompt + generated code.
+
+---
+
+### 3. LLM integration and model switching
+
+Mikasa must support:
+
+- **Claude Code** (primary)
+- **Open-source LLMs** (e.g., via a local server or another HTTP API)
+
+Requirements:
+
+1. Design a **pluggable LLM provider abstraction**, e.g. `LLMClient` interface, with implementations like:
+    - `ClaudeClient`
+    - `OpenSourceLLMClient`
+2. User can **choose the model**:
+    - Via CLI flag (e.g., `-model claude-code`, `-model local-llm`)
+    - Or via a config file (e.g., `.mikasa.json`)
+3. The plan should describe:
+    - How the CLI passes the selected model to the backend.
+    - How the backend chooses which LLM provider/client to use for the current request.
+    - How to add new models in the future with minimal code changes.
+
+---
+
+### 4. Node.js + Express backend design
+
+Use **Node.js + Express** to implement a backend server that:
+
+- Exposes endpoints like:
+    - `/api/transcribe` – (if needed) to handle speech-to-text
+    - `/api/codegen` – main code generation / agent endpoint
+    - `/api/tasks` – manage long-running tasks
+    - `/api/checkpoints` – save answers / checkpoints
+- Encapsulates:
+    - A **smart agent** that can use tools:
+        - File read/write/patch
+        - Run shell commands (build, test, run)
+        - Interact with Git (status, commit, branch, push, PR)
+    - A **planner** that supports:
+        - Long-term task thinking
+        - Breaking goals into steps
+        - Iterating based on errors/logs
+
+In your plan, specify:
+
+- Folder structure (e.g. `src/cli`, `src/server`, `src/llm`, `src/agent`, `src/db`).
+- Main Express routes and their responsibilities.
+- How the backend and CLI communicate (e.g., local HTTP, IPC, direct library usage).
+
+---
+
+### 5. Smart agent behavior (planning, build, run, debug, PR)
+
+The agent should:
+
+1. Take the voice-derived prompt as a **high-level goal**, e.g.:
+    - “Add a login API endpoint with JWT authentication.”
+2. Plan the steps:
+    - Identify files to read/modify.
+    - Determine commands to run (e.g., `npm test`, `npm run build`).
+3. Execute the steps:
+    - Edit code (apply diffs/patches).
+    - Run builds/tests.
+4. If there are errors:
+    - Capture logs and error messages.
+    - Ask the LLM how to fix them.
+    - Apply fixes and retry.
+5. When done ask the users if they want to create pr:
+- Stage and commit changes.
+- Create a new branch and **open a PR automatically** (e.g., GitHub).
+- Generate PR title and description using the LLM.
+
+Please describe in the plan:
+
+- The **agent loop** (how it decides next action).
+- Tool abstractions: `FileTool`, `CommandTool`, `GitTool`.
+- Safety measures (limit number of retries, etc.).
+
+---
+
+### 6. CLI app design (cross-platform, NPM)
+
+The project will be:
+
+- Published to NPM with:
+    - A `bin` entry in `package.json` (e.g., `"mikasa": "dist/cli.js"`).
+- Usable on:
+    - Windows cmd / PowerShell
+    - macOS terminal
+
+Plan should include:
+
+- CLI entrypoint file with `#!/usr/bin/env node`.
+- How to structure commands, for example:
+    - `mikasa init`
+    - `mikasa voice`
+    - `mikasa run`
+    - `mikasa status`
+    - `mikasa model list`
+    - `mikasa model set <name>`
+- How the CLI will:
+    - Start the backend (if local).
+    - Or communicate with an already-running backend.
+
+Please include basic error handling and UX considerations (prompts, spinners, logs).
+
+---
+
+### 7. MongoDB usage and session/checkpoint design
+
+If database is needed, it must be **MongoDB**.
+
+We want to persist **conversation and answer checkpoints** with this structure:
+
+```json
+{
+  "user_id": "",
+  "session_id": "",
+  "check_point_id": "",
+  "description": "",
+  "question": "",
+  "answer": "",
+  "created_by": "",
+  "modified_by": "",
+  "create_time_stamp": ""
+}
+
+```
+
+Detailed requirements:
+
+1. Every time the user opens a **new terminal session** or starts the code generator:
+    - Create a **new unique `session_id`** (use a GUID).
+2. Each new question (new voice prompt) creates a new **`check_point_id`**.
+    - A single `session_id` can have **multiple `check_point_id`s**.
+3. The user should be able to **save the answer** against the `check_point_id`.
+4. This **“save answer” task must run in the background**:
+    - It must not block the user from continuing to input new questions in the CLI.
+    - Use non-blocking asynchronous saves (e.g., queue or background worker).
+
+5. All the data should be saved in MongoDB vector database, it should be supporting semantic search to retrieve the historical data.
+
+In the plan, please:
+
+- Show how to structure MongoDB collections (e.g., `checkpoints`).
+- Describe how and where `session_id` and `check_point_id` are generated and passed around.
+- Explain how the background saving mechanism works (e.g., in-memory queue + worker, separate process, or background job pattern).
+
+---
+
+### 8. Non-blocking background save
+
+Explain a design where:
+
+- The CLI submits a prompt, gets an answer, and immediately returns control to the user.
+- Meanwhile, the backend:
+    - Asynchronously saves `{ user_id, session_id, check_point_id, question, answer, ... }` to MongoDB.
+- Possible patterns to mention:
+    - In-memory job queue processed by a worker loop.
+    - Or a message queue abstraction (even if initially just in memory).
+
+---
+
+### 9. Deliverables of the plan
+
+In your response, please provide:
+
+1. **Architecture overview**
+    - Component diagram in text.
+    - Explanation of modules (CLI, backend, LLM layer, agent, DB).
+2. **Proposed folder structure** for the codebase.
+3. **Key data models and TypeScript interfaces**, including:
+    - `LLMProviderConfig`
+    - `Task`, `Run` (if used)
+    - `Checkpoint` (based on the JSON structure above)
+4. **Main flows**:
+    - Voice → text → prompt → codegen.
+    - Long-term task execution and debugging loop.
+    - Session / checkpoint management and background saving.
+5. **Step-by-step implementation phases**:
+    - Phase 1: Skeleton CLI + Express server + config.
+    - Phase 2: Voice recording + STT integration.
+    - Phase 3: LLM abstraction + model switching.
+    - Phase 4: Agent tools (file, command, git).
+    - Phase 5: Long-term tasks and PR creation.
+    - Phase 6: MongoDB integration with session/checkpoints.
+    - Phase 7: Packaging for NPM, cross-platform testing, polishing.
+
+Make the plan concrete enough that a senior Node.js developer can start implementing Mikasa directly from your description.
