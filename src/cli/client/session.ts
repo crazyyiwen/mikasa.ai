@@ -10,18 +10,15 @@ import { generateSessionId } from '../../shared/utils/id-generator';
 const SESSION_FILE = path.join(os.tmpdir(), '.mikasa-session');
 
 export class SessionManager {
-  private sessionId: string | null = null;
+  private sessionId: string;
   private userId: string;
 
   constructor() {
     this.userId = process.env.USER_ID || os.userInfo().username;
+    this.sessionId = this.loadOrCreateSession();
   }
 
-  getSessionId(): string {
-    if (this.sessionId) {
-      return this.sessionId;
-    }
-
+  private loadOrCreateSession(): string {
     // Try to load existing session
     if (fs.existsSync(SESSION_FILE)) {
       try {
@@ -29,8 +26,7 @@ export class SessionManager {
         // Check if session is still valid (less than 24 hours old)
         const sessionAge = Date.now() - new Date(sessionData.timestamp).getTime();
         if (sessionAge < 24 * 60 * 60 * 1000) {
-          this.sessionId = sessionData.sessionId;
-          return this.sessionId;
+          return sessionData.sessionId;
         }
       } catch (error) {
         // Ignore errors and create new session
@@ -38,8 +34,13 @@ export class SessionManager {
     }
 
     // Create new session
-    this.sessionId = generateSessionId();
+    const newSessionId = generateSessionId();
+    this.sessionId = newSessionId;
     this.saveSession();
+    return newSessionId;
+  }
+
+  getSessionId(): string {
     return this.sessionId;
   }
 

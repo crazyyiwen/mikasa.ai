@@ -34,7 +34,7 @@ export class Iterator {
 
     try {
       // Ask LLM how to fix the error
-      const fixStrategy = await this.getFix Strategy(step, failedResult, context);
+      const fixStrategy = await this.getFixStrategy(step, failedResult, context);
 
       if (!fixStrategy) {
         return failedResult;

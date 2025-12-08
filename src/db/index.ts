@@ -17,12 +17,17 @@ export async function connectDatabase(): Promise<void> {
   try {
     const config = loadConfig();
 
+    logger.info(`Attempting to connect to MongoDB...`);
+    logger.info(`Database URI: ${config.database.uri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@')}`);
+    logger.info(`Database name: ${config.database.name}`);
+
     await mongoose.connect(config.database.uri, {
       dbName: config.database.name,
+      serverSelectionTimeoutMS: 5000,
     });
 
     isConnected = true;
-    logger.info(`Connected to MongoDB: ${config.database.name}`);
+    logger.info(`✓ Connected to MongoDB: ${config.database.name}`);
 
     // Handle connection events
     mongoose.connection.on('error', (error) => {

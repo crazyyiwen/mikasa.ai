@@ -59,7 +59,7 @@ export function loadConfig(configPath?: string): MikasaConfig {
     },
     database: {
       uri: process.env.MONGODB_URI || 'mongodb://localhost:27017',
-      name: 'mikasa',
+      name: process.env.MONGODB_DB_NAME || 'mikasa_cli',
       options: {
         useNewUrlParser: true,
         useUnifiedTopology: true,

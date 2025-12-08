@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { GitTool } from '../../agent/tools/git-tool';
 import { logger } from '../middleware/logger';
-import { tasks } from './checkpoints';
+import { tasks } from './codegen';
 
 const router = Router();
 
