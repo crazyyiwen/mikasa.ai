@@ -2,17 +2,12 @@
  * Task Executor - Executes plan steps using tools
  */
 
-import { BaseLLMClient } from '../llm/base-client';
 import { BaseTool, ToolExecutionResult } from './tools/base-tool';
 import { PlanStep } from '../shared/types/task';
 import { AgentContext, addLog, addFileModified, addCommandRun } from './context';
-import { AgentError } from '../shared/errors';
 
 export class Executor {
-  constructor(
-    private llm: BaseLLMClient,
-    private tools: BaseTool[]
-  ) {}
+  constructor(private tools: BaseTool[]) {}
 
   async executeStep(step: PlanStep, context: AgentContext): Promise<ToolExecutionResult> {
     addLog(context, 'info', `Executing: ${step.description}`, { step });

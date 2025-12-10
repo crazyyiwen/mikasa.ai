@@ -9,7 +9,7 @@ import { LLMFactory } from '../llm/providers/factory';
 import { BaseLLMClient } from '../llm/base-client';
 import { FileTool, CommandTool, GitTool, BaseTool } from './tools';
 import { TaskExecution } from '../shared/types/task';
-import { AgentContext, createContext, addLog } from './context';
+import { createContext, addLog } from './context';
 import { loadConfig } from '../shared/utils/config-loader';
 import { AgentError } from '../shared/errors';
 
@@ -19,6 +19,7 @@ export interface AgentConfig {
   autonomous?: boolean;
   maxIterations?: number;
   workingDirectory?: string;
+  previewMode?: boolean; // If true, generate plan without executing file writes
 }
 
 export class Agent {
@@ -47,7 +48,7 @@ export class Agent {
 
     // Initialize agent components
     this.planner = new Planner(this.llm);
-    this.executor = new Executor(this.llm, this.tools);
+    this.executor = new Executor(this.tools);
     this.iterator = new Iterator(this.llm, appConfig.agent.maxRetries);
   }
 
@@ -62,6 +63,20 @@ export class Agent {
       // Phase 1: Planning
       addLog(context, 'info', 'Phase 1: Planning');
       const plan = await this.planner.createPlan(goal, context);
+
+      // If in preview mode, return the plan without executing
+      if (this.config.previewMode) {
+        addLog(context, 'info', 'Preview mode: returning plan without execution');
+        return {
+          currentStep: 0,
+          completedSteps: [],
+          failedSteps: [],
+          logs: context.logs,
+          filesModified: [],
+          commandsRun: [],
+          plan, // Include the plan for preview
+        };
+      }
 
       // Phase 2: Execution
       addLog(context, 'info', 'Phase 2: Execution');

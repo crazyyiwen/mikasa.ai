@@ -1,0 +1,14 @@
+{
+  "watch": ["src/server", "src/shared", "src/db", "src/jobs"],
+  "ignore": [
+    "src/cli/**",
+    "src/agent/tools/**",
+    "src/utils/**",
+    "*.test.ts",
+    "*.test.js",
+    "dist/**",
+    "node_modules/**"
+  ],
+  "ext": "ts,json",
+  "exec": "ts-node src/server/index.ts"
+}

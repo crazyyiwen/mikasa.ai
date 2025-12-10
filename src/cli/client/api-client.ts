@@ -129,4 +129,8 @@ export class MikasaAPIClient {
     });
     return response.data;
   }
+
+  async applyChanges(taskId: string): Promise<void> {
+    await this.client.post(`/api/tasks/${taskId}/apply`);
+  }
 }

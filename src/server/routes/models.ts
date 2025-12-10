@@ -7,7 +7,7 @@ import { loadConfig, saveConfig } from '../../shared/utils/config-loader';
 
 const router = Router();
 
-router.get('/models', (req, res) => {
+router.get('/models', (_req, res) => {
   try {
     const config = loadConfig();
     const models: string[] = [];
@@ -22,9 +22,9 @@ router.get('/models', (req, res) => {
       models.push(config.llm.providers.opensource.model);
     }
 
-    res.json({ models });
+    return res.json({ models });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -53,9 +53,9 @@ router.post('/models/default', (req, res) => {
 
     saveConfig(config);
 
-    res.json({ message: `Default model set to: ${model}` });
+    return res.json({ message: `Default model set to: ${model}` });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 

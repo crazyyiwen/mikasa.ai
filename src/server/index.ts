@@ -2,6 +2,17 @@
  * Server Entry Point
  */
 
+// Global error handlers MUST be set up first, before any imports
+process.on('uncaughtException', (error) => {
+  console.error('UNCAUGHT EXCEPTION:', error);
+  // Don't exit - keep server running
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  // Don't exit - keep server running
+});
+
 import { createApp } from './app';
 import { loadConfig } from '../shared/utils/config-loader';
 import { logger } from './middleware/logger';

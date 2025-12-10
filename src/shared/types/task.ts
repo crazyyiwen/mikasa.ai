@@ -53,6 +53,7 @@ export interface TaskExecution {
   logs: ExecutionLog[];
   filesModified: string[];
   commandsRun: CommandResult[];
+  plan?: TaskPlan; // Optional: included when in preview mode
 }
 
 export interface ExecutionLog {

@@ -130,7 +130,7 @@ export class ClaudeClient extends BaseLLMClient {
     };
   }
 
-  async transcribeAudio(audioPath: string): Promise<string> {
+  async transcribeAudio(_audioPath: string): Promise<string> {
     // Claude doesn't natively support audio transcription
     // This would need to be implemented with a separate service like Whisper
     throw new Error('Claude audio transcription not yet implemented. Use Whisper instead.');

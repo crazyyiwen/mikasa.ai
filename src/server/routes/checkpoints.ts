@@ -44,14 +44,14 @@ router.post('/checkpoints/save', async (req, res) => {
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Checkpoint save queued',
       checkPointId,
     });
   } catch (error: any) {
     logger.error('Error saving checkpoint:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -74,13 +74,13 @@ router.get('/checkpoints', async (req, res) => {
       checkpoints = await repo.findByUser(userId as string);
     }
 
-    res.json({
+    return res.json({
       checkpoints,
       total: checkpoints.length,
     });
   } catch (error: any) {
     logger.error('Error retrieving checkpoints:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -103,7 +103,7 @@ router.get('/checkpoints/search', async (req, res) => {
       minScore: minScore ? parseFloat(minScore as string) : 0.7,
     });
 
-    res.json({
+    return res.json({
       results: results.map((r) => ({
         checkpoint: r.checkpoint,
         similarity: r.score,
@@ -112,7 +112,7 @@ router.get('/checkpoints/search', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('Error searching checkpoints:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 

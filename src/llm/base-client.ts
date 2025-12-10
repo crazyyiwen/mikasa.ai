@@ -25,7 +25,7 @@ export abstract class BaseLLMClient implements LLMClient {
     onChunk: (chunk: CompletionChunk) => void
   ): Promise<CompletionResponse>;
 
-  async transcribeAudio?(audioPath: string): Promise<string> {
+  async transcribeAudio?(_audioPath: string): Promise<string> {
     throw new Error('Audio transcription not supported by this provider');
   }
 

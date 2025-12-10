@@ -134,14 +134,14 @@ ${task.result?.filesModified?.map((f: string) => `- ${f}`).join('\n') || 'Multip
 
     logger.info(`PR created successfully for task ${taskId}`);
 
-    res.json({
+    return res.json({
       success: true,
       prUrl: prResult.output,
       branch: branchName,
     });
   } catch (error: any) {
     logger.error('Error creating PR:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 

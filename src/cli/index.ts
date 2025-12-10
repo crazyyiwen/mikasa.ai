@@ -2,6 +2,7 @@
 
 /**
  * Mikasa CLI Entry Point
+ * Follows Claude Code CLI behavior with interactive REPL and print modes
  */
 
 import { Command } from 'commander';
@@ -12,6 +13,7 @@ import {
   statusCommand,
   modelListCommand,
   modelSetCommand,
+  interactiveCommand,
 } from './commands';
 import { Logger } from './ui/logger';
 
@@ -21,6 +23,47 @@ program
   .name('mikasa')
   .description('AI-powered code generation CLI with voice support')
   .version('1.0.0');
+
+// Default action - Interactive REPL mode (like Claude Code CLI)
+// Usage:
+//   mikasa                          -> Start interactive REPL
+//   mikasa "your prompt"            -> Start interactive REPL with initial prompt
+//   mikasa -p "your prompt"         -> Print mode (execute once and exit)
+//   mikasa -v                       -> Voice mode
+program
+  .argument('[prompt...]', 'Optional initial prompt for interactive mode')
+  .option('-p, --print', 'Print mode - execute once and exit (non-interactive)')
+  .option('-m, --model <model>', 'LLM model to use')
+  .option('-a, --autonomous', 'Fully autonomous mode')
+  .option('-v, --voice', 'Use voice input')
+  .action(async (promptArgs, options) => {
+    try {
+      // If voice flag is set, use voice command
+      if (options.voice) {
+        await voiceCommand(options);
+        return;
+      }
+
+      const prompt = promptArgs && promptArgs.length > 0 ? promptArgs.join(' ') : undefined;
+
+      // Print mode (-p flag) - execute once and exit
+      if (options.print) {
+        if (!prompt) {
+          Logger.error('Print mode requires a prompt');
+          Logger.info('Usage: mikasa -p "your prompt"');
+          process.exit(1);
+        }
+        await runCommand(prompt, options);
+        return;
+      }
+
+      // Default: Interactive REPL mode
+      await interactiveCommand(prompt, options);
+    } catch (error: any) {
+      Logger.error(error.message);
+      process.exit(1);
+    }
+  });
 
 // Init command
 program
@@ -44,21 +87,6 @@ program
   .action(async (options) => {
     try {
       await voiceCommand(options);
-    } catch (error: any) {
-      Logger.error(error.message);
-      process.exit(1);
-    }
-  });
-
-// Run command
-program
-  .command('run <prompt>')
-  .description('Run code generation with text prompt')
-  .option('-m, --model <model>', 'LLM model to use')
-  .option('-a, --autonomous', 'Fully autonomous mode')
-  .action(async (prompt, options) => {
-    try {
-      await runCommand(prompt, options);
     } catch (error: any) {
       Logger.error(error.message);
       process.exit(1);
@@ -107,8 +135,3 @@ model
 
 // Parse arguments
 program.parse(process.argv);
-
-// Show help if no command provided
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
-}

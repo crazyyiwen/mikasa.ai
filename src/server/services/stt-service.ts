@@ -31,7 +31,7 @@ export class STTService {
     }
   }
 
-  async transcribe(audioFilePath: string, format: string = 'wav'): Promise<STTResult> {
+  async transcribe(audioFilePath: string, _format: string = 'wav'): Promise<STTResult> {
     const startTime = Date.now();
 
     try {
@@ -87,40 +87,15 @@ export class STTService {
     return response.data.text;
   }
 
-  private async transcribeWithClaude(audioFilePath: string): Promise<string> {
+  private async transcribeWithClaude(_audioFilePath: string): Promise<string> {
     if (!this.anthropic) {
       throw new Error('Claude API key not configured');
     }
 
-    // Read audio file as base64
-    const audioBuffer = fs.readFileSync(audioFilePath);
-    const audioBase64 = audioBuffer.toString('base64');
-
-    // Claude's audio support (if available)
-    // Note: This is a placeholder - Claude's audio API may differ
-    const message = await this.anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Please transcribe the following audio:',
-            },
-            // This is conceptual - actual implementation depends on Claude's audio API
-          ],
-        },
-      ],
-    });
-
-    const textContent = message.content.find((c) => c.type === 'text');
-    if (textContent && 'text' in textContent) {
-      return textContent.text;
-    }
-
-    throw new Error('No transcription returned from Claude');
+    // Note: Claude does not currently support audio transcription
+    // This is a placeholder for future implementation
+    // For now, fallback to Whisper or throw an error
+    throw new Error('Claude audio transcription is not yet supported. Please use Whisper provider instead.');
   }
 
   async transcribeWithLocalWhisper(audioFilePath: string): Promise<string> {

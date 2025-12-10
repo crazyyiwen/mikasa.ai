@@ -52,19 +52,19 @@ router.post('/codegen', async (req, res) => {
 
     tasks.set(taskId, task);
 
+    // Execute agent in background (don't await)
+    executeAgentInBackground(taskId, prompt, model, context?.workingDirectory, options);
+
     // Return immediately - execution happens in background
-    res.json({
+    return res.json({
       taskId,
       checkPointId,
       status: 'pending',
       message: 'Task created and execution started',
     });
-
-    // Execute agent in background
-    executeAgentInBackground(taskId, prompt, model, context?.workingDirectory, options);
   } catch (error: any) {
     logger.error('Code generation error:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -78,7 +78,7 @@ router.get('/tasks/:taskId', async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    res.json({
+    return res.json({
       taskId: task.taskId,
       status: task.status,
       progress: task.progress,
@@ -86,7 +86,45 @@ router.get('/tasks/:taskId', async (req, res) => {
       error: task.error,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Apply changes endpoint - executes the plan after user approval
+router.post('/tasks/:taskId/apply', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    const task = tasks.get(taskId);
+
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    if (!task.result?.plan) {
+      return res.status(400).json({ error: 'No plan available to apply' });
+    }
+
+    if (task.status !== 'completed') {
+      return res.status(400).json({ error: 'Task is not ready to apply' });
+    }
+
+    // Execute the plan (without preview mode) - wrap in try-catch to prevent crashes
+    executeApprovedPlan(taskId, task.prompt, task.model, task.context?.workingDirectory, task.options)
+      .catch((error) => {
+        logger.error(`Failed to execute approved plan for task ${taskId}:`, error);
+        task.status = 'failed';
+        task.error = error.message;
+        task.progress.currentAction = 'Failed to apply changes';
+      });
+
+    return res.json({
+      message: 'Applying changes...',
+      taskId,
+    });
+  } catch (error: any) {
+    logger.error('Apply changes error:', error);
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -107,30 +145,35 @@ async function executeAgentInBackground(
     task.status = 'executing';
     task.progress.currentAction = 'Creating execution plan...';
 
+    // Run in preview mode first (don't apply changes yet)
     const agent = new Agent({
       taskId,
       model,
       workingDirectory: workingDirectory || process.cwd(),
       autonomous: options?.autonomous || false,
       maxIterations: options?.maxIterations || 10,
+      previewMode: options?.previewMode !== false, // Preview mode by default
     });
 
-    logger.info(`Executing task ${taskId}: ${prompt}`);
+    logger.info(`Executing task ${taskId}: ${prompt} (preview: ${agent['config'].previewMode})`);
 
     const result = await agent.execute(prompt);
 
     // Update task with results
     task.status = 'completed';
     task.progress.currentStep = result.completedSteps.length;
-    task.progress.totalSteps = result.completedSteps.length + result.failedSteps.length;
-    task.progress.currentAction = 'Completed';
+    task.progress.totalSteps = result.plan?.steps.length || result.completedSteps.length + result.failedSteps.length;
+    task.progress.currentAction = result.plan ? 'Waiting for approval' : 'Completed';
     task.result = {
       filesModified: result.filesModified,
-      summary: `Task completed successfully. Modified ${result.filesModified.length} file(s).`,
+      summary: result.plan
+        ? `Plan created with ${result.plan.steps.length} step(s). Waiting for approval.`
+        : `Task completed successfully. Modified ${result.filesModified.length} file(s).`,
       logs: result.logs,
+      plan: result.plan, // Include plan for preview
     };
 
-    logger.info(`Task ${taskId} completed successfully`);
+    logger.info(`Task ${taskId} ${result.plan ? 'plan created' : 'completed successfully'}`);
 
     // Save checkpoint in background
     const { enqueueJob } = await import('../../jobs/queue');
@@ -154,6 +197,59 @@ async function executeAgentInBackground(
     task.status = 'failed';
     task.error = error.message;
     task.progress.currentAction = 'Failed';
+  }
+}
+
+/**
+ * Execute approved plan (apply changes after user approval)
+ */
+async function executeApprovedPlan(
+  taskId: string,
+  prompt: string,
+  model?: string,
+  workingDirectory?: string,
+  options?: any
+): Promise<void> {
+  const task = tasks.get(taskId);
+  if (!task) return;
+
+  try {
+    task.status = 'executing';
+    task.progress.currentAction = 'Applying changes...';
+
+    // Run agent with preview mode OFF to actually apply changes
+    const agent = new Agent({
+      taskId,
+      model,
+      workingDirectory: workingDirectory || process.cwd(),
+      autonomous: options?.autonomous || false,
+      maxIterations: options?.maxIterations || 10,
+      previewMode: false, // Actually execute the changes
+    });
+
+    logger.info(`Applying changes for task ${taskId}: ${prompt}`);
+
+    const result = await agent.execute(prompt);
+
+    // Update task with results
+    task.status = 'completed';
+    task.progress.currentStep = result.completedSteps.length;
+    task.progress.totalSteps = result.completedSteps.length + result.failedSteps.length;
+    task.progress.currentAction = 'Changes applied';
+    task.result = {
+      filesModified: result.filesModified,
+      summary: `Changes applied successfully. Modified ${result.filesModified.length} file(s).`,
+      logs: result.logs,
+      plan: task.result.plan, // Keep the original plan for reference
+    };
+
+    logger.info(`Task ${taskId} changes applied successfully`);
+  } catch (error: any) {
+    logger.error(`Task ${taskId} apply failed:`, error);
+
+    task.status = 'failed';
+    task.error = error.message;
+    task.progress.currentAction = 'Failed to apply changes';
   }
 }
 

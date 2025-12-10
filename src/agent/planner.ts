@@ -3,7 +3,7 @@
  */
 
 import { BaseLLMClient } from '../llm/base-client';
-import { TaskPlan, PlanStep } from '../shared/types/task';
+import { TaskPlan } from '../shared/types/task';
 import { AgentContext, addLog } from './context';
 import { generateStepId } from '../shared/utils/id-generator';
 import { AgentError } from '../shared/errors';
@@ -86,8 +86,8 @@ Important guidelines:
 - Start by reading relevant files to understand the codebase
 - Make incremental changes
 - Test after significant changes
-- Commit changes with clear messages
-- Each step should be atomic and focused`;
+- Each step should be atomic and focused
+- Do NOT include git commit steps unless explicitly requested by the user`;
   }
 
   private buildPrompt(goal: string, context: AgentContext): string {

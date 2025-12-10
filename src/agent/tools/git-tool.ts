@@ -147,18 +147,53 @@ export class GitTool extends BaseTool {
 
   private async commit(message: string): Promise<ToolExecutionResult> {
     try {
-      // Stage all changes
-      await this.git.add('.');
+      // Get status to see what files exist
+      const status = await this.git.status();
+
+      // Collect all files that need to be staged
+      const filesToAdd = [
+        ...status.modified,
+        ...status.created,
+        ...status.deleted,
+        ...status.not_added,
+      ];
+
+      if (filesToAdd.length === 0) {
+        return {
+          success: false,
+          output: 'No changes to commit',
+          error: 'Working directory is clean',
+        };
+      }
+
+      // Filter out Windows reserved names and invalid paths
+      const WINDOWS_RESERVED = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'LPT1', 'LPT2', 'LPT3'];
+      const validFiles = filesToAdd.filter(file => {
+        const fileName = file.split(/[/\\]/).pop()?.toUpperCase();
+        return fileName && !WINDOWS_RESERVED.includes(fileName);
+      });
+
+      if (validFiles.length === 0) {
+        return {
+          success: false,
+          output: 'No valid files to commit',
+          error: 'All files are invalid or Windows reserved names',
+        };
+      }
+
+      // Stage only valid files
+      await this.git.add(validFiles);
 
       // Commit
       const result = await this.git.commit(message);
 
       return {
         success: true,
-        output: `Committed: ${message}\nCommit hash: ${result.commit}`,
+        output: `Committed: ${message}\nCommit hash: ${result.commit}\nFiles: ${validFiles.length}`,
         metadata: {
           commit: result.commit,
           message,
+          filesCommitted: validFiles.length,
         },
       };
     } catch (error: any) {
